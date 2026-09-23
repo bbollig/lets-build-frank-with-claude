@@ -111,6 +111,52 @@ jobs:
         working-directory: ui
         run: npm ci && npm test && npm run build
 
+  # The image is what actually ships, and neither job above builds it: they
+  # test server/ and ui/ in isolation. Without this, a push to main would be
+  # the first time the root Dockerfile ever ran, and a broken stage would
+  # surface as a failed deploy instead of a failed check.
+  build-image:
+    name: Build & smoke-test the image
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Same build the pipeline runs with `az acr build --file Dockerfile .`,
+      # including the `npm test` gate inside both build stages.
+      - run: docker build -t frank:pr .
+
+      # Container settings, not dev ones: HOST=0.0.0.0 comes from the
+      # Dockerfile, and the port must match deploy.yml's --target-port.
+      - name: Start Frank
+        run: |
+          docker run -d --name frank -p 3000:3000 frank:pr
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3000/healthz >/dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::Frank never became healthy"; docker logs frank; exit 1
+
+      - name: Check what the deploy actually serves
+        run: |
+          set -euo pipefail
+          curl -fsS http://127.0.0.1:3000/healthz | grep -q '"status":"ok"'
+          # `/` is the console once ui/ exists (ADR-003), and says so until then.
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+          mcp() {
+            curl -fsS -X POST http://127.0.0.1:3000/mcp \
+              -H 'content-type: application/json' \
+              -H 'accept: application/json, text/event-stream' -d "$1"
+          }
+          mcp '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' | grep -q '"serverInfo"'
+          # No `arguments`, which is what a real client sends for a
+          # no-argument tool. Proves the strict schemas do not refuse it.
+          mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_status"}}' | grep -q '"structuredContent"'
+
+      - name: Frank's logs
+        if: always()
+        run: docker logs frank
+
   deploy:
     name: Deploy Frank -> Azure Container Apps
     if: github.event_name != 'pull_request'

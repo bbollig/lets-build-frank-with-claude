@@ -1,0 +1,9 @@
+{
+  // vitest transpiles without checking types, so this is what keeps the
+  // tests honest. Same reasoning as server/tsconfig.test.json.
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "vite.config.ts", "vitest.setup.ts"],
+  "compilerOptions": {
+    "types": ["node", "@testing-library/jest-dom"]
+  }
+}

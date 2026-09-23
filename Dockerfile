@@ -53,6 +53,9 @@ USER node
 
 # Must match deploy.yml's --target-port and config.ts's PORT default.
 ENV PORT=3000
+# config.ts defaults HOST to 127.0.0.1 so local dev keeps the SDK's
+# DNS-rebinding protection. Ingress cannot reach a container listening there.
+ENV HOST=0.0.0.0
 EXPOSE 3000
 
 # NOTE: Azure Container Apps does NOT use this HEALTHCHECK as its platform
