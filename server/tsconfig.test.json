@@ -1,0 +1,10 @@
+{
+  // vitest transpiles without checking types, and tsconfig.json only covers
+  // src/, so this is what stops a broken test from hiding (see ADR-007's notes).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}
