@@ -1,6 +1,6 @@
 # ADR-009: Frank reads what is running in his own resource group
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09
 
 **Extends ADR-002** and **depends on ADR-010's runtime credential**.
